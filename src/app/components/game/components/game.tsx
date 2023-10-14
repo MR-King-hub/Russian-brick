@@ -14,40 +14,29 @@ export default function Game(){
     const [state,setState] = useState<number[][]>([[]]);
     const flag = useRef(true);
     const brick = useRef<number[][]>([[]]);
+    const gameArr = useRef<number[][]>([[]])
 
     useEffect(()=>{
+        console.log('test')
         const {row,column} = gameconfig;
-        const gameArr = new Array(row);
+        const initgameArr = new Array(row);
         for(let i = 0 ; i < row ; i++){
-            gameArr[i] = new Array(column).fill(0)
+            initgameArr[i] = new Array(column).fill(0)
         }
-        setState(gameArr)
+        setState(initgameArr)
+        gameArr.current = initgameArr
     },[])
 
     const deepClone = (arr:number[][]):number[][]=>{
-        const newArr:number[][] = []
-        arr.forEach(value=>{
-            newArr.push([...value])
-        })
-        // console.log(JSON.stringify(newArr),JSON.stringify(arr))
         return JSON.parse(JSON.stringify(arr))
     }
 
-    const brickFall = async function(){
-        //todo:起始位置计算函数;
-        const dropbrick = deepClone(brick.current);
-        // todo:不知道为什么，这边使用deepClone会出现问题
-        // console.log(JSON.stringify(state))
-        const dropgameArr = deepClone(state);
-        dropbrick.forEach((arr,index)=>{
-            dropgameArr[arr[0]][arr[1]] = 1;
-        })
-        setState(dropgameArr)
-        await sleep();
-
+    const brickFallControl = (dropgameArr:number[][])=>{
         const nextdropgameArr = deepClone(dropgameArr);
+        const dropbrick = deepClone(brick.current)
+
         dropbrick.forEach((arr,index)=>{
-            // nextdropgameArr[arr[0]][arr[1]] = 0;
+            dropgameArr[arr[0]][arr[1]] = 0;
             if(arr[0]<gameconfig.column-1&&nextdropgameArr[arr[0]+1][arr[1]]!==2){
                 arr[0]++;
             }
@@ -61,14 +50,25 @@ export default function Game(){
             brickFall()
         }
         else{
-            //todo:添加新砖块
             brick.current.forEach((arr,index)=>{
                 nextdropgameArr[arr[0]][arr[1]] = 2;
             })
             setState(nextdropgameArr)
+            gameArr.current = nextdropgameArr
             nextBrick()
         }
+    }
 
+    const brickFall = async function(){
+        const dropbrick = deepClone(brick.current);
+        const dropgameArr = deepClone(gameArr.current);
+        dropbrick.forEach((arr,index)=>{
+            dropgameArr[arr[0]][arr[1]] = 1;
+        })
+        setState(dropgameArr)
+        gameArr.current = dropgameArr
+        await sleep()
+        brickFallControl(dropgameArr)
     }
 
     const nextBrick = function(){
@@ -83,7 +83,7 @@ export default function Game(){
 
     const leftBrick = function(){
         const leftbrick:number[][] = JSON.parse(JSON.stringify(brick.current));
-        const gameBrickarr = [...state];
+        const gameBrickarr = deepClone(gameArr.current);
         let left = true;
         leftbrick.forEach((arr,index)=>{
             if(arr[1]>0){
@@ -99,6 +99,7 @@ export default function Game(){
             // console.log(brick.current,leftbrick)
             brick.current = leftbrick;
             setState(gameBrickarr)
+            gameArr.current = gameBrickarr
         }
     }
     //todo:
@@ -107,7 +108,7 @@ export default function Game(){
             <button className="text-white" onClick={()=>nextBrick()}>start</button>
             <button className="text-white" onClick={()=>leftBrick()}>left</button>
             <button className="text-white" onClick={()=>nextBrick()}>right</button>
-            <button className="text-white" onClick={()=>nextBrick()}>restart</button>
+            <button className="text-white" onClick={()=>brickFall()}>restart</button>
         </div>
     </>
 }
